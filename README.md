@@ -8,7 +8,13 @@ Joel Jeffery, JFDI Consulting Ltd
 I looked plenty, but I couldn't find any tools to help analyse complexity of Appian applications. So, here's my effort.
 
 ## Before you start
-Make sure all of your Expression Rules and Interfaces have been formatted in Appian Designer. Open each file, hit CTRL-SHIFT-F and save. Yes. I know that means you'll get many lines that only have one bracket on them. Yes, this kind of line count is s a very blunt instrument. Consistent formatting is really all we have to determine line count. It's not much, but at least it's something.
+Make sure all of your Expression Rules and Interfaces have been formatted in Appian Designer. Open each file, hit CTRL-SHIFT-F and save. 
+
+Yes. I know that means you'll get many lines that only have one bracket on them. 
+
+Yes, this kind of line count is s a very blunt instrument.
+
+Consistent formatting is really all we have to determine line count. It's not much, but at least it's something.
 
 ## Measures of complexity
 In the absence of any tools for cyclomatic complexity analysis, I went for some indicators of complexity. Specifically, I wanted to count the numbers of:
