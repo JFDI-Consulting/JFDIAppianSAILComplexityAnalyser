@@ -28,6 +28,8 @@ In the absence of any tools for cyclomatic complexity analysis, I went for some 
 - Calls to internal Appian functions and interface components
 - Decision Tables
 - Locals
+- Comments
+- Commented Out Code (!)
 - Lines (in SAIL code)
 - Process Nodes (in Process Models)
 
