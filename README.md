@@ -12,7 +12,7 @@ Make sure all of your Expression Rules and Interfaces have been formatted in App
 
 Yes. I know that means you'll get many lines that only have one bracket on them. 
 
-Yes, this kind of line count is s a very blunt instrument.
+Yes, this kind of line count is a very blunt instrument.
 
 Consistent formatting is really all we have to determine line count. It's not much, but at least it's something.
 
