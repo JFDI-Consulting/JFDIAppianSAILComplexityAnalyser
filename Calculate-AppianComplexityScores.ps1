@@ -65,6 +65,8 @@ $REbuiltIns = "SYSTEM_SYSRULES_(?!(forEach|query))";
 $REruleBang = "#`".*`"\(";
 $REdecisions = "SYSTEM_SYSRULES_dd_dr";
 $RElocals = "^\s+local!.*\:";
+$REcomments = "/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/";
+$REcommentedOutCode = "[\w\d]+[!(]";
 
 $data = @();
 dir content\*.xml | % {
@@ -120,11 +122,17 @@ dir content\*.xml | % {
 	$ruleBangs = [Regex]::Matches($code, $REruleBang, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
 	$decisions = [Regex]::Matches($code, $REdecisions, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
 	$locals = [Regex]::Matches($code, $RElocals, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline).Count;
+	
+	$allComments = [Regex]::Matches($code, $REcomments, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline);
+	$allCommentedOutCode = $allComments | ? { [Regex]::Matches($_.Value, $REcommentedOutCode, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline).Count -gt 0 };
+	$comments = $allComments.Count - $allCommentedOutCode.Count;
+	$commentedOutCode = $allCommentedOutCode.Count;
+	
 	$lineCount = ($code -split "`n").Length;
 	
 	$nodes = 0;
 		
-	$data += [PSCustomObject]@{"File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes; "LOCALs" = $locals; "LOC"=$lineCount;}
+	$data += [PSCustomObject]@{"File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes; "COMMENTs" = $comments; "COMMENTEDOUTs" = $commentedOutCode; "LOCALs" = $locals; "LOC"=$lineCount;}
 
 }
 
@@ -146,6 +154,8 @@ dir processModel\*.xml | % {
 	$ruleBangs = 0;
 	$decisions = 0;
 	$locals = 0;
+	$comments = 0;
+	$commentedOutCode = 0;
 	$lineCount = 0;
 	$nodes = $xml.processModelHaul.process_model_port.pm.nodes.node.Length;
 	
@@ -153,6 +163,6 @@ dir processModel\*.xml | % {
 	if($null -eq $name) {
 		$name = $xml.processModelHaul.process_model_port.pm.meta.name.'string-map'.pair.value.'#cdata-section';
 	}
-	$data += [PSCustomObject]@{"File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes;"LOCALs" = $locals; "LOC"=$lineCount;}
+	$data += [PSCustomObject]@{"File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes;"COMMENTS" = $comments; "COMMENTEDOUTs" = $commentedOutCode; "LOCALs" = $locals; "LOC"=$lineCount;}
 }
 return $data;
