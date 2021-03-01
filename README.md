@@ -1,5 +1,5 @@
 # JFDI Appian SAIL Complexity Analyser
-A complexity estimation script for Appian SAIL code
+A complexity estimation script for Appian SAIL code written in PowerShell.
 
 ## Author
 Joel Jeffery, JFDI Consulting Ltd
