@@ -28,9 +28,9 @@ In the absence of any tools for cyclomatic complexity analysis, I went for some 
 - Calls to internal Appian functions and interface components
 - Decision Tables
 - Locals
-- Comments
+- Comments (and Annotations / Swimlanes in Process Models)
 - Commented Out Code (!)
-- Lines (in SAIL code)
+- Lines (in SAIL code - even in Process Models)
 - Process Nodes (in Process Models)
 
 ## Shortcomings
