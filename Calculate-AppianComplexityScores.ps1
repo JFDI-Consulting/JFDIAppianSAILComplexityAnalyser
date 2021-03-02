@@ -66,7 +66,8 @@ $REruleBang = "#`".*`"\(";
 $REdecisions = "SYSTEM_SYSRULES_dd_dr";
 $RElocals = "^\s+local!.*\:";
 $REcomments = "/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/";
-$REcommentedOutCode = "[\w\d]+[!(]";
+$REcommentedOutCode = '(^/\*\s*[\w\d]+[!(:*/])|(^/\*\s*["&,)}{*])';
+$REcommentGENID = '/\*\d+E-GEN\*/';
 
 $data = @();
 dir content\*.xml | % {
@@ -124,12 +125,12 @@ dir content\*.xml | % {
 	$decisions = [Regex]::Matches($code, $REdecisions, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
 	$locals = [Regex]::Matches($code, $RElocals, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline).Count;
 	
-	$allComments = ([Regex]::Matches($code, $REcomments, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline) | % {$_ -split "`n"});
+	$allComments = ([Regex]::Matches($code, $REcomments, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline) | % {$_ -split "`n"} | ? {$_ -notmatch $REcommentGENID});
 	$allCommentedOutCode = $allComments | ? { [Regex]::Matches($_, $REcommentedOutCode, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline).Count -gt 0 };
 	$justComments = $allComments | ? { [Regex]::Matches($_, $REcommentedOutCode, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline).Count -eq 0 };
 	$commentedOutCode = $allCommentedOutCode.Count;
 	$comments = $justComments.Count;
-	
+	$complexityScore = $ifs + $ands + $ors + $chooses + $forEachs + $querys + $builtIns + $ruleBangs + $decisions + $locals;
 	
 	$hasDescription = $description.Length -gt 0;
 	
@@ -137,7 +138,7 @@ dir content\*.xml | % {
 	
 	$nodes = 0;
 		
-	$data += [PSCustomObject]@{"File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes; "COMMENTs" = $comments; "COMMENTEDOUTs" = $commentedOutCode; "LOCALs" = $locals; "LOC"=$lineCount; "HASDESCRIPTION" = $hasDescription; "DESCRIPTION" = $description; "JustComments" = $justComments; "CommentedOutCode" = $allCommentedOutCode;}
+	$data += [PSCustomObject]@{"File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes; "COMMENTs" = $comments; "COMMENTEDOUTs" = $commentedOutCode; "LOCALs" = $locals; "LOC"=$lineCount; "COMPLEXITYSCORE" = $complexityScore; "HASDESCRIPTION" = $hasDescription; "DESCRIPTION" = $description; "JustComments" = $justComments; "CommentedOutCode" = $allCommentedOutCode;}
 
 }
 
@@ -148,6 +149,11 @@ dir processModel\*.xml | % {
 	$type = "ProcessModel";
 
 	$xml = [xml] (Get-Content $file);
+	$codes = $xml.processModelHaul.process_model_port.pm.nodes.node.ac.'form-map'.pair.'form-config'.form.uiExpressionForm.expression.'#cdata-section' | ? {$_ -notlike '*41707069616E-GEN-DEBUG*'};
+	$codes2 = $xml.processModelHaul.process_model_port.pm.nodes.node.ac.'output-exprs'.el.'#cdata-section';
+	$codes3 = $xml.processModelHaul.process_model_port.pm.nodes.node.ac.acps.acp.expr | ? {$_ -ne ""};
+	
+	$code = ($codes + $codes2 + $codes3) -join "`n";
 
 	$ifs = 0;
 	$ands = 0;
@@ -162,14 +168,39 @@ dir processModel\*.xml | % {
 	$comments = 0;
 	$commentedOutCode = 0;
 	$lineCount = 0;
-	$nodes = $xml.processModelHaul.process_model_port.pm.nodes.node.Length;
-	$justComments = @();
-	$allCommentedOutCode = @();
+	
+	$ifs = [Regex]::Matches($code, $REif, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
+	$ands = [Regex]::Matches($code, $REand, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
+	$ors = [Regex]::Matches($code, $REor, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
+	$chooses = [Regex]::Matches($code, $REchoose, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
+	$forEachs = [Regex]::Matches($code, $REforEach, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
+	$querys = [Regex]::Matches($code, $REqueries, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
+	$builtIns = [Regex]::Matches($code, $REbuiltIns, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
+	$ruleBangs = [Regex]::Matches($code, $REruleBang, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
+	$decisions = [Regex]::Matches($code, $REdecisions, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
+	$locals = [Regex]::Matches($code, $RElocals, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline).Count;
+
+	$lineCount = ($code -split "`n").Length;
+
+	
+	$nodes = $xml.processModelHaul.process_model_port.pm.nodes.node.Count;
+	
+	$swimLanes = $xml.processModelHaul.process_model_port.pm.lanes.lane.Count;
+	$annotations = $xml.processModelHaul.process_model_port.pm.annotations.Count;
+	
+	$allComments = ([Regex]::Matches($code, $REcomments, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline) | % {$_ -split "`n"} | ? {$_ -notmatch $REcommentGENID});
+	$allCommentedOutCode = $allComments | ? { [Regex]::Matches($_, $REcommentedOutCode, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline).Count -gt 0 };
+	$justComments = $allComments | ? { [Regex]::Matches($_, $REcommentedOutCode, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline).Count -eq 0 };
+	$commentedOutCode = $allCommentedOutCode.Count;
+	$comments = $justComments.Count + $swimLanes + $annotations;
+
+	
+	$complexityScore = $ifs + $ands + $ors + $chooses + $forEachs + $querys + $builtIns + $ruleBangs + $decisions + $locals;
 	
 	$name = $xml.processModelHaul.process_model_port.pm.meta.name.'string-map'.pair[0].value.'#cdata-section';
 	if($null -eq $name) {
 		$name = $xml.processModelHaul.process_model_port.pm.meta.name.'string-map'.pair.value.'#cdata-section';
 	}
-	$data += [PSCustomObject]@{"File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes;"COMMENTS" = $comments; "COMMENTEDOUTs" = $commentedOutCode; "LOCALs" = $locals; "LOC"=$lineCount; "JustComments" = $justComments; "CommentedOutCode" = $allCommentedOutCode;}
+	$data += [PSCustomObject]@{"File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes;"COMMENTS" = $comments; "COMMENTEDOUTs" = $commentedOutCode; "LOCALs" = $locals; "LOC"=$lineCount; "COMPLEXITYSCORE" = $complexityScore; "HASDESCRIPTION" = $hasDescription; "DESCRIPTION" = $description; "JustComments" = $justComments; "CommentedOutCode" = $allCommentedOutCode;}
 }
 return $data;
