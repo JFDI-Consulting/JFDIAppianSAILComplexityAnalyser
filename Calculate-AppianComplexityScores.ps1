@@ -111,6 +111,7 @@ dir content\*.xml | % {
 	
 	$code = $xml.$haulNode.$codeNode.definition;
 	$name = $xml.$haulNode.$codeNode.name;
+	$description = $xml.$haulNode.$codeNode.description;
 
 	$ifs = [Regex]::Matches($code, $REif, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
 	$ands = [Regex]::Matches($code, $REand, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
@@ -129,11 +130,14 @@ dir content\*.xml | % {
 	$commentedOutCode = $allCommentedOutCode.Count;
 	$comments = $justComments.Count;
 	
+	
+	$hasDescription = $description.Length -gt 0;
+	
 	$lineCount = ($code -split "`n").Length;
 	
 	$nodes = 0;
 		
-	$data += [PSCustomObject]@{"File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes; "COMMENTs" = $comments; "COMMENTEDOUTs" = $commentedOutCode; "LOCALs" = $locals; "LOC"=$lineCount; "JustComments" = $justComments; "CommentedOutCode" = $allCommentedOutCode;}
+	$data += [PSCustomObject]@{"File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes; "COMMENTs" = $comments; "COMMENTEDOUTs" = $commentedOutCode; "LOCALs" = $locals; "LOC"=$lineCount; "HASDESCRIPTION" = $hasDescription; "DESCRIPTION" = $description; "JustComments" = $justComments; "CommentedOutCode" = $allCommentedOutCode;}
 
 }
 
