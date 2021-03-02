@@ -66,7 +66,7 @@ $REruleBang = "#`".*`"\(";
 $REdecisions = "SYSTEM_SYSRULES_dd_dr";
 $RElocals = "^\s+local!.*\:";
 $REcomments = "/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/";
-$REcommentedOutCode = '(^/\*\s*[\w\d]+[!(:*/])|(^/\*\s*["&,)}{*])';
+$REcommentedOutCode = '(^/\*\s*[\w\d]+(([!(:]\s*(?!.*[\w\d]+\s+[\w\d]+))|null))|(^/\*\s*["&,)}{*])|(,\*/)';#(?!.*[\w\d]+\s+[\w\d]+)null|rule\!|true|false
 $REcommentGENID = '/\*\d+E-GEN\*/';
 
 $data = @();
