@@ -55,16 +55,16 @@ Calculate-AppianComplexityScores.ps1 | Export-CSV -NoTypeInformation report.csv;
 $data = Calculate-AppianComplexityScores.ps1;
 
 #>
-$REif = "if\(";
+$REif = "(if\()|(<xsl:if)";
 $REand = "and\(";
 $REor = "or\(";
 $REchoose = "choose\(";
-$REforEach = "SYSTEM_SYSRULES_forEach";
+$REforEach = "(SYSTEM_SYSRULES_forEach)|(<xsl:for-each)";
 $REqueries = "SYSTEM_SYSRULES_query";
 $REbuiltIns = "SYSTEM_SYSRULES_(?!(forEach|query))";
 $REruleBang = "#`".*`"\(";
 $REdecisions = "SYSTEM_SYSRULES_dd_dr";
-$RElocals = "^\s+local!.*\:";
+$RElocals = "(^\s+local!.*\:)|(<xsl:value-of select)";
 $REcomments = "/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/";
 $REcommentedOutCode = '(^/\*\s*[\w\d]+(([!(:]\s*(?!.*[\w\d]+\s+[\w\d]+))|null))|(^/\*\s*["&,)}{*])|(,\*/)';#(?!.*[\w\d]+\s+[\w\d]+)null|rule\!|true|false
 $REcommentGENID = '/\*\d+E-GEN\*/';
@@ -113,6 +113,17 @@ dir content\*.xml | % {
 	$code = $xml.$haulNode.$codeNode.definition;
 	$name = $xml.$haulNode.$codeNode.name;
 	$description = $xml.$haulNode.$codeNode.description;
+	
+	$documentType = "";
+	if($type -eq "Document") {
+		$documentFilename = $xml.$haulNode.file;
+		$documentFolder = $xml.$haulNode.$codeNode.uuid;
+		$documentType = $documentFilename.Split('.')[-1];
+		if($documentType -in "xsl", "xml", "html") {
+			$code = Get-Content -Raw "content\$documentFolder\$documentFilename";
+		}
+	}
+	
 
 	$ifs = [Regex]::Matches($code, $REif, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
 	$ands = [Regex]::Matches($code, $REand, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
@@ -130,15 +141,15 @@ dir content\*.xml | % {
 	$justComments = $allComments | ? { [Regex]::Matches($_, $REcommentedOutCode, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline).Count -eq 0 };
 	$commentedOutCode = $allCommentedOutCode.Count;
 	$comments = $justComments.Count;
-	$complexityScore = $ifs + $ands + $ors + $chooses + $forEachs + $querys + $builtIns + $ruleBangs + $decisions + $locals;
+	$complexityScore = 1 + $ifs + $ands + $ors + $chooses + $forEachs + $querys + $builtIns + $ruleBangs + $decisions + $locals;
 	
 	$hasDescription = $description.Length -gt 0;
 	
-	$lineCount = ($code -split "`n").Length;
+	$lineCount = ($code -split "`n").Length - $comments - $commentedOutCode;
 	
 	$nodes = 0;
 		
-	$data += [PSCustomObject]@{"File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes; "COMMENTs" = $comments; "COMMENTEDOUTs" = $commentedOutCode; "LOCALs" = $locals; "LOC"=$lineCount; "COMPLEXITYSCORE" = $complexityScore; "HASDESCRIPTION" = $hasDescription; "DESCRIPTION" = $description; "JustComments" = $justComments; "CommentedOutCode" = $allCommentedOutCode;}
+	$data += [PSCustomObject]@{"File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes; "COMMENTs" = $comments; "COMMENTEDOUTs" = $commentedOutCode; "LOCALs" = $locals; "LOC"=$lineCount; "COMPLEXITYSCORE" = $complexityScore; "HASDESCRIPTION" = $hasDescription; "DESCRIPTION" = $description; "JustComments" = $justComments; "CommentedOutCode" = $allCommentedOutCode; "DocumentType"= $documentType;}
 
 }
 
@@ -151,7 +162,7 @@ dir processModel\*.xml | % {
 	$xml = [xml] (Get-Content $file);
 	$codes = $xml.processModelHaul.process_model_port.pm.nodes.node.ac.'form-map'.pair.'form-config'.form.uiExpressionForm.expression.'#cdata-section' | ? {$_ -notlike '*41707069616E-GEN-DEBUG*'};
 	$codes2 = $xml.processModelHaul.process_model_port.pm.nodes.node.ac.'output-exprs'.el.'#cdata-section';
-	$codes3 = $xml.processModelHaul.process_model_port.pm.nodes.node.ac.acps.acp.expr | ? {$_ -ne ""};
+	$codes3 = $xml.processModelHaul.process_model_port.pm.nodes.node.ac.acps.acp.expr.'#cdata-section' | ? {$_ -ne ""};
 	
 	$code = ($codes + $codes2 + $codes3) -join "`n";
 
