@@ -163,13 +163,18 @@ dir processModel\*.xml | % {
 	$codes = $xml.processModelHaul.process_model_port.pm.nodes.node.ac.'form-map'.pair.'form-config'.form.uiExpressionForm.expression.'#cdata-section' | ? {$_ -notlike '*41707069616E-GEN-DEBUG*'};
 	$codes2 = $xml.processModelHaul.process_model_port.pm.nodes.node.ac.'output-exprs'.el.'#cdata-section';
 	$codes3 = $xml.processModelHaul.process_model_port.pm.nodes.node.ac.acps.acp.expr.'#cdata-section' | ? {$_ -ne ""};
-	
+
 	$code = ($codes + $codes2 + $codes3) -join "`n";
 
+	$nodeNames = $xml.processModelHaul.process_model_port.pm.nodes.node.ac.name.'#cdata-section'| ? {$_ -ne ""};
+	$nodeXors = ($nodeNames | ? {$_ -eq "XOR"}).Count;
+	$nodeOrs = ($nodeNames | ? {$_ -eq "OR"}).Count;
+	$nodeAnds = ($nodeNames | ? {$_ -eq "AND"}).Count;
+
 	$ifs = 0;
-	$ands = 0;
-	$ors = 0;
-	$chooses = 0;
+	$ands = $nodeAnds;
+	$ors = $nodeOrs;
+	$chooses = $nodeXors;
 	$forEachs = 0;
 	$querys = 0;
 	$builtIns = 0;
@@ -180,16 +185,16 @@ dir processModel\*.xml | % {
 	$commentedOutCode = 0;
 	$lineCount = 0;
 	
-	$ifs = [Regex]::Matches($code, $REif, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
-	$ands = [Regex]::Matches($code, $REand, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
-	$ors = [Regex]::Matches($code, $REor, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
-	$chooses = [Regex]::Matches($code, $REchoose, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
-	$forEachs = [Regex]::Matches($code, $REforEach, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
-	$querys = [Regex]::Matches($code, $REqueries, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
-	$builtIns = [Regex]::Matches($code, $REbuiltIns, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
-	$ruleBangs = [Regex]::Matches($code, $REruleBang, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
-	$decisions = [Regex]::Matches($code, $REdecisions, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
-	$locals = [Regex]::Matches($code, $RElocals, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline).Count;
+	$ifs += [Regex]::Matches($code, $REif, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
+	$ands += [Regex]::Matches($code, $REand, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
+	$ors += [Regex]::Matches($code, $REor, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
+	$chooses += [Regex]::Matches($code, $REchoose, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
+	$forEachs += [Regex]::Matches($code, $REforEach, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
+	$querys += [Regex]::Matches($code, $REqueries, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
+	$builtIns += [Regex]::Matches($code, $REbuiltIns, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
+	$ruleBangs += [Regex]::Matches($code, $REruleBang, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
+	$decisions += [Regex]::Matches($code, $REdecisions, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
+	$locals += [Regex]::Matches($code, $RElocals, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline).Count;
 
 	$lineCount = ($code -split "`n").Length;
 
