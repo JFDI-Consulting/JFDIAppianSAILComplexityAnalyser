@@ -66,7 +66,8 @@ $REruleBang = "#`".*`"\(";
 $REdecisions = "SYSTEM_SYSRULES_dd_dr";
 $RElocals = "(^\s+local!.*\:)|(<xsl:value-of select)";
 $REcomments = "/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/";
-$REcommentedOutCode = '(^/\*\s*[\w\d]+(([!(:]\s*(?!.*[\w\d]+\s+[\w\d]+))|null))|(^/\*\s*["&,)}{*])|(,\*/)';#(?!.*[\w\d]+\s+[\w\d]+)null|rule\!|true|false
+$REcommentedOutCode = '(/\*.*((a!\w+\()|([\w\d]+:\s*")).*\*/)|(^/\*\s*[\w\d]+(([!(:]\s*(?!.*[\w\d]+\s+[\w\d]+))|null))|(^/\*\s*["&,)}{*])|(,\*/)|(/\*\s*(null|true|false|pagingInfo)\s*\*/)';
+$REnotcode = "\*\*";
 $REcommentGENID = '/\*\d+E-GEN\*/';
 
 $data = @();
@@ -137,8 +138,8 @@ dir content\*.xml | % {
 	$locals = [Regex]::Matches($code, $RElocals, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline).Count;
 	
 	$allComments = ([Regex]::Matches($code, $REcomments, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline) | % {$_ -split "`n"} | ? {$_ -notmatch $REcommentGENID});
-	$allCommentedOutCode = $allComments | ? { [Regex]::Matches($_, $REcommentedOutCode, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline).Count -gt 0 };
-	$justComments = $allComments | ? { [Regex]::Matches($_, $REcommentedOutCode, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline).Count -eq 0 };
+	$allCommentedOutCode = $allComments | ? { [Regex]::Matches($_, $REcommentedOutCode, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline).Count -gt 0 -and -not [Regex]::Matches($_, $REnotcode).Count -gt 0};
+	$justComments = $allComments | ? { [Regex]::Matches($_, $REcommentedOutCode, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline).Count -eq 0 -or [Regex]::Matches($_, $REnotcode).Count -gt 0};
 	$commentedOutCode = $allCommentedOutCode.Count;
 	$comments = $justComments.Count;
 	$complexityScore = 1 + $ifs + $ands + $ors + $chooses + $forEachs + $querys + $builtIns + $ruleBangs + $decisions + $locals;
@@ -149,7 +150,10 @@ dir content\*.xml | % {
 	
 	$nodes = 0;
 		
-	$data += [PSCustomObject]@{"File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes; "COMMENTs" = $comments; "COMMENTEDOUTs" = $commentedOutCode; "LOCALs" = $locals; "LOC"=$lineCount; "COMPLEXITYSCORE" = $complexityScore; "HASDESCRIPTION" = $hasDescription; "DESCRIPTION" = $description; "JustComments" = $justComments; "CommentedOutCode" = $allCommentedOutCode; "DocumentType"= $documentType;}
+	$commentsText = $justComments -join "`n";
+	$commentedOutText = $allCommentedOutCode -join "`n";
+	
+	$data += [PSCustomObject]@{"File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes; "COMMENTs" = $comments; "COMMENTEDOUTs" = $commentedOutCode; "LOCALs" = $locals; "LOC"=$lineCount; "COMPLEXITYSCORE" = $complexityScore; "HASDESCRIPTION" = $hasDescription; "DESCRIPTION" = $description; "JustComments" = $commentsText; "CommentedOutCode" = $commentedOutText; "DocumentType"= $documentType;}
 
 }
 
@@ -184,6 +188,7 @@ dir processModel\*.xml | % {
 	$comments = 0;
 	$commentedOutCode = 0;
 	$lineCount = 0;
+	$documentType = "";
 	
 	$ifs += [Regex]::Matches($code, $REif, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
 	$ands += [Regex]::Matches($code, $REand, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
@@ -217,6 +222,9 @@ dir processModel\*.xml | % {
 	if($null -eq $name) {
 		$name = $xml.processModelHaul.process_model_port.pm.meta.name.'string-map'.pair.value.'#cdata-section';
 	}
-	$data += [PSCustomObject]@{"File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes;"COMMENTS" = $comments; "COMMENTEDOUTs" = $commentedOutCode; "LOCALs" = $locals; "LOC"=$lineCount; "COMPLEXITYSCORE" = $complexityScore; "HASDESCRIPTION" = $hasDescription; "DESCRIPTION" = $description; "JustComments" = $justComments; "CommentedOutCode" = $allCommentedOutCode;}
+	
+	$commentsText = $justComments -join "`n";
+	$commentedOutText = $allCommentedOutCode -join "`n";
+	$data += [PSCustomObject]@{"File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes;"COMMENTS" = $comments; "COMMENTEDOUTs" = $commentedOutCode; "LOCALs" = $locals; "LOC"=$lineCount; "COMPLEXITYSCORE" = $complexityScore; "HASDESCRIPTION" = $hasDescription; "DESCRIPTION" = $description; "JustComments" = $commentsText; "CommentedOutCode" = $commentedOutText; "DocumentType"= $documentType;}
 }
 return $data;
