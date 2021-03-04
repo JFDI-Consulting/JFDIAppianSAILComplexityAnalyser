@@ -48,7 +48,9 @@ A small line count, with a high proportion of Expression Rules and Interfaces su
 However, a large line count, with a low proportion of Expression Rules and Interfaces hints at low reuse and poor separation of concerns.
 
 ## Usage
-1. Export your Appian application as a zip file.
+1. Export your Appian application as a zip file
+![Export Appian Application](https://user-images.githubusercontent.com/20968935/109966367-187c7a80-7ce8-11eb-887c-67d1a8ab2be2.png)
+
 2. Extract the zip file to a folder
 3. Open PowerShell and navigate to that folder (e.g. cd c:\Appian\MyProject)
 4. Run the script
