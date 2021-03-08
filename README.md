@@ -27,11 +27,12 @@ In the absence of any tools for cyclomatic complexity analysis, I went for some 
 - Calls to Expression Rules and Interfaces
 - Calls to internal Appian functions and interface components
 - Decision Tables
-- Locals
+- Locals (and value-ofs for XSL files)
 - Comments (and Annotations / Swimlanes in Process Models)
 - Commented Out Code (!)
-- Lines (in SAIL code - even in Process Models)
+- Lines (in SAIL code - even in Process Models and XSL files)
 - Process Nodes (in Process Models)
+- Object Type / Document Type
 
 ## Shortcomings
 There are many. 😀
@@ -39,6 +40,12 @@ There are many. 😀
 This script does not even try to calculate cyclomatic complexity. It's a rough guide to areas in code that are worth looking at closer. It's best used when comparing two or more projects to determine relative levels of complexity.
 
 It should be noted that this tool is not a replacement for code reviews and good Appian development practices. It's best used to help find hotspots worthy of closer investigation.
+
+The main objects code complexity data is extracted from are:
+- Expression Rules
+- Interfaces
+- Process Models (including Gateways and SAIL Expressions)
+- XSL Files
 
 ## Interpreting the results
 It's up to you. For my use, I decided that some of these counters have more architectural weight than others. I generally make a spread sheet and sum specific columns together to derive various measures of complexity. Then sort by those columns descending.
