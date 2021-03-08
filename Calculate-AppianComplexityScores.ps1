@@ -61,9 +61,9 @@ $REor = "or\(";
 $REchoose = "choose\(";
 $REforEach = "(SYSTEM_SYSRULES_forEach)|(<xsl:for-each)";
 $REqueries = "SYSTEM_SYSRULES_query";
-$REbuiltIns = "SYSTEM_SYSRULES_(?!(forEach|query))";
+$REbuiltIns = "SYSTEM_SYSRULES_(?!(forEac|quer|dd_))\w+";
 $REruleBang = "#`".*`"\(";
-$REdecisions = "SYSTEM_SYSRULES_dd_dr";
+$REdecisions = '#"SYSTEM_SYSRULES_dd_dri"';
 $RElocals = "(^\s+local!.*\:)|(<xsl:value-of select)";
 $REcomments = "/\*([^*]|[\r\n]|(\*+([^*/]|[\r\n])))*\*+/";
 $REcommentedOutCode = '(/\*.*((a!\w+\()|([\w\d]+:\s*")).*\*/)|(^/\*\s*[\w\d]+(([!(:]\s*(?!.*[\w\d]+\s+[\w\d]+))|null))|(^/\*\s*["&,)}{*])|(,\*/)|(/\*\s*(null|true|false|pagingInfo)\s*\*/)';
@@ -136,24 +136,28 @@ dir content\*.xml | % {
 	$ruleBangs = [Regex]::Matches($code, $REruleBang, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
 	$decisions = [Regex]::Matches($code, $REdecisions, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
 	$locals = [Regex]::Matches($code, $RElocals, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline).Count;
+	$nodes = 0;
 	
 	$allComments = ([Regex]::Matches($code, $REcomments, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline) | % {$_ -split "`n"} | ? {$_ -notmatch $REcommentGENID});
 	$allCommentedOutCode = $allComments | ? { [Regex]::Matches($_, $REcommentedOutCode, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline).Count -gt 0 -and -not [Regex]::Matches($_, $REnotcode).Count -gt 0};
 	$justComments = $allComments | ? { [Regex]::Matches($_, $REcommentedOutCode, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline).Count -eq 0 -or [Regex]::Matches($_, $REnotcode).Count -gt 0};
 	$commentedOutCode = $allCommentedOutCode.Count;
 	$comments = $justComments.Count;
-	$complexityScore = 1 + $ifs + $ands + $ors + $chooses + $forEachs + $querys + $builtIns + $ruleBangs + $decisions + $locals;
+	
+	$complexityScore = 1 + $ifs + $ands + $ors + $chooses + $forEachs + $querys + $builtIns + $ruleBangs + $decisions + $locals + $nodes;
+	
+	$cyclomaticComplexity = 1 + $ifs + $ands + $ors + $chooses + $forEachs;
+	$architecturalComplexity = $querys + $ruleBangs + $nodes;
+	$uiComplexity = $builtIns;
 	
 	$hasDescription = $description.Length -gt 0;
 	
 	$lineCount = ($code -split "`n").Length - $comments - $commentedOutCode;
-	
-	$nodes = 0;
 		
 	$commentsText = $justComments -join "`n";
 	$commentedOutText = $allCommentedOutCode -join "`n";
 	
-	$data += [PSCustomObject]@{"File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes; "COMMENTs" = $comments; "COMMENTEDOUTs" = $commentedOutCode; "LOCALs" = $locals; "LOC"=$lineCount; "COMPLEXITYSCORE" = $complexityScore; "HASDESCRIPTION" = $hasDescription; "DESCRIPTION" = $description; "JustComments" = $commentsText; "CommentedOutCode" = $commentedOutText; "DocumentType"= $documentType;}
+	$data += [PSCustomObject]@{"File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes; "COMMENTs" = $comments; "COMMENTEDOUTs" = $commentedOutCode; "LOCALs" = $locals; "LOC"=$lineCount; "CYCLOMATICCOMPLEXITY" = $cyclomaticComplexity; "ARCHITECTURALCOMPLEXITY" = $architecturalComplexity; "UICOMPLEXITY" = $uiComplexity; "COMPLEXITYSCORE" = $complexityScore; "DocumentType"= $documentType; "HASDESCRIPTION" = $hasDescription; "DESCRIPTION" = $description; "JustComments" = $commentsText; "CommentedOutCode" = $commentedOutText; };
 
 }
 
@@ -216,7 +220,10 @@ dir processModel\*.xml | % {
 	$comments = $justComments.Count + $swimLanes + $annotations;
 
 	
-	$complexityScore = $ifs + $ands + $ors + $chooses + $forEachs + $querys + $builtIns + $ruleBangs + $decisions + $locals;
+	$complexityScore = $ifs + $ands + $ors + $chooses + $forEachs + $querys + $builtIns + $ruleBangs + $decisions + $locals + $nodes;
+	$cyclomaticComplexity = 1 + $ifs + $ands + $ors + $chooses + $forEachs;
+	$architecturalComplexity = $querys + $ruleBangs + $nodes;
+	$uiComplexity = $builtIns;
 	
 	$name = $xml.processModelHaul.process_model_port.pm.meta.name.'string-map'.pair[0].value.'#cdata-section';
 	if($null -eq $name) {
@@ -225,6 +232,6 @@ dir processModel\*.xml | % {
 	
 	$commentsText = $justComments -join "`n";
 	$commentedOutText = $allCommentedOutCode -join "`n";
-	$data += [PSCustomObject]@{"File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes;"COMMENTS" = $comments; "COMMENTEDOUTs" = $commentedOutCode; "LOCALs" = $locals; "LOC"=$lineCount; "COMPLEXITYSCORE" = $complexityScore; "HASDESCRIPTION" = $hasDescription; "DESCRIPTION" = $description; "JustComments" = $commentsText; "CommentedOutCode" = $commentedOutText; "DocumentType"= $documentType;}
+	$data += [PSCustomObject]@{"File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes;"COMMENTS" = $comments; "COMMENTEDOUTs" = $commentedOutCode; "LOCALs" = $locals; "LOC"=$lineCount; "CYCLOMATICCOMPLEXITY" = $cyclomaticComplexity; "ARCHITECTURALCOMPLEXITY" = $architecturalComplexity; "UICOMPLEXITY" = $uiComplexity; "COMPLEXITYSCORE" = $complexityScore; "DocumentType"= $documentType; "HASDESCRIPTION" = $hasDescription; "DESCRIPTION" = $description; "JustComments" = $commentsText; "CommentedOutCode" = $commentedOutText; };
 }
 return $data;
