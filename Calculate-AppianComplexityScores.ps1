@@ -144,6 +144,11 @@ dir content\*.xml | % {
 	$commentedOutCode = $allCommentedOutCode.Count;
 	$comments = $justComments.Count;
 	
+	$testCases = $xml.$haulNode.typedValue.value.el.Count;
+	$testCasesAssertions = $xml.$haulNode.typedValue.value.el.assertions.resultAssertions.Count;
+	$testCasesExpectedOutput = $xml.$haulNode.typedValue.value.el.assertions.expectedOutput.Count - $testCasesAssertions;
+	$testCasesNoAssertions = $xml.$haulNode.typedValue.value.el.assertions.Count - $testCasesExpectedOutput - $testCasesAssertions;
+
 	$complexityScore = 1 + $ifs + $ands + $ors + $chooses + $forEachs + $querys + $builtIns + $ruleBangs + $decisions + $locals + $nodes;
 	
 	$cyclomaticComplexity = 1 + $ifs + $ands + $ors + $chooses + $forEachs;
@@ -157,7 +162,7 @@ dir content\*.xml | % {
 	$commentsText = $justComments -join "`n";
 	$commentedOutText = $allCommentedOutCode -join "`n";
 	
-	$data += [PSCustomObject]@{"File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes; "COMMENTs" = $comments; "COMMENTEDOUTs" = $commentedOutCode; "LOCALs" = $locals; "LOC"=$lineCount; "CYCLOMATICCOMPLEXITY" = $cyclomaticComplexity; "ARCHITECTURALCOMPLEXITY" = $architecturalComplexity; "UICOMPLEXITY" = $uiComplexity; "COMPLEXITYSCORE" = $complexityScore; "DocumentType"= $documentType; "HASDESCRIPTION" = $hasDescription; "DESCRIPTION" = $description; "JustComments" = $commentsText; "CommentedOutCode" = $commentedOutText; };
+	$data += [PSCustomObject]@{"File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes; "COMMENTs" = $comments; "COMMENTEDOUTs" = $commentedOutCode; "LOCALs" = $locals; "LOC"=$lineCount; "TESTCASEs"=$testCases; "TESTCASESNOASSERTIONs"=$testCasesNoAssertions; "TESTCASESEXPECTEDOUTPUTs"=$testCasesExpectedOutput; "TESTCASESASSERTIONs"=$testCasesAssertions; "CYCLOMATICCOMPLEXITY" = $cyclomaticComplexity; "ARCHITECTURALCOMPLEXITY" = $architecturalComplexity; "UICOMPLEXITY" = $uiComplexity; "COMPLEXITYSCORE" = $complexityScore; "DocumentType"= $documentType; "HASDESCRIPTION" = $hasDescription; "DESCRIPTION" = $description; "JustComments" = $commentsText; "CommentedOutCode" = $commentedOutText; };
 
 }
 
@@ -192,6 +197,11 @@ dir processModel\*.xml | % {
 	$comments = 0;
 	$commentedOutCode = 0;
 	$lineCount = 0;
+	$testCases = 0;
+	$testCasesExpectedOutput = 0;
+	$testCasesAssertions = 0;
+	$testCasesNoAssertions = 0;
+	
 	$documentType = "";
 	
 	$ifs += [Regex]::Matches($code, $REif, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase).Count;
@@ -218,7 +228,6 @@ dir processModel\*.xml | % {
 	$justComments = $allComments | ? { [Regex]::Matches($_, $REcommentedOutCode, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline).Count -eq 0 };
 	$commentedOutCode = $allCommentedOutCode.Count;
 	$comments = $justComments.Count + $swimLanes + $annotations;
-
 	
 	$complexityScore = $ifs + $ands + $ors + $chooses + $forEachs + $querys + $builtIns + $ruleBangs + $decisions + $locals + $nodes;
 	$cyclomaticComplexity = 1 + $ifs + $ands + $ors + $chooses + $forEachs;
@@ -232,6 +241,6 @@ dir processModel\*.xml | % {
 	
 	$commentsText = $justComments -join "`n";
 	$commentedOutText = $allCommentedOutCode -join "`n";
-	$data += [PSCustomObject]@{"File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes;"COMMENTS" = $comments; "COMMENTEDOUTs" = $commentedOutCode; "LOCALs" = $locals; "LOC"=$lineCount; "CYCLOMATICCOMPLEXITY" = $cyclomaticComplexity; "ARCHITECTURALCOMPLEXITY" = $architecturalComplexity; "UICOMPLEXITY" = $uiComplexity; "COMPLEXITYSCORE" = $complexityScore; "DocumentType"= $documentType; "HASDESCRIPTION" = $hasDescription; "DESCRIPTION" = $description; "JustComments" = $commentsText; "CommentedOutCode" = $commentedOutText; };
+	$data += [PSCustomObject]@{"File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes;"COMMENTS" = $comments; "COMMENTEDOUTs" = $commentedOutCode; "LOCALs" = $locals; "LOC"=$lineCount; "TESTCASEs"=$testCases; "TESTCASESNOASSERTIONs"=$testCasesNoAssertions; "TESTCASESEXPECTEDOUTPUTs"=$testCasesExpectedOutput; "TESTCASESASSERTIONs"=$testCasesAssertions; "CYCLOMATICCOMPLEXITY" = $cyclomaticComplexity; "ARCHITECTURALCOMPLEXITY" = $architecturalComplexity; "UICOMPLEXITY" = $uiComplexity; "COMPLEXITYSCORE" = $complexityScore; "DocumentType"= $documentType; "HASDESCRIPTION" = $hasDescription; "DESCRIPTION" = $description; "JustComments" = $commentsText; "CommentedOutCode" = $commentedOutText; };
 }
 return $data;
