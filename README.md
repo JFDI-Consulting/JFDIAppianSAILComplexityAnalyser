@@ -33,6 +33,7 @@ In the absence of any tools for cyclomatic complexity analysis, I went for some 
 - Lines (in SAIL code - even in Process Models and XSL files)
 - Process Nodes (in Process Models)
 - Object Type / Document Type
+- Test Cases (all/expected output/assertions/no assertion)
 
 ## Shortcomings
 There are many. 😀
