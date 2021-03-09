@@ -46,6 +46,9 @@ https://jfdi.info
 .OUTPUTS
 Returns an array of complexity metrics for each file in your Appian project with the following properties:
 
+.PARAMETER Summary
+Specifies whether to return a summary or the full data.
+
 File, Name, Type, IFs, ANDs, ORs, CHOOSEs, FOREACHs, QUERYs, BUILTINs, RULEBANGs, DECISIONs, NODEs, LOCALs, LOC
 
 .EXAMPLE
@@ -54,7 +57,14 @@ Calculate-AppianComplexityScores.ps1 | Export-CSV -NoTypeInformation report.csv;
 .EXAMPLE
 $data = Calculate-AppianComplexityScores.ps1;
 
+.EXAMPLE
+$summary = Calculate-AppianComplexityScores.ps1 -Summary;
+
 #>
+param(
+	[switch]$Summary
+);
+
 $REif = "(if\()|(<xsl:if)";
 $REand = "and\(";
 $REor = "or\(";
@@ -147,7 +157,7 @@ dir content\*.xml | % {
 	$testCases = $xml.$haulNode.typedValue.value.el.Count;
 	$testCasesAssertions = $xml.$haulNode.typedValue.value.el.assertions.resultAssertions.Count;
 	$testCasesExpectedOutput = $xml.$haulNode.typedValue.value.el.assertions.expectedOutput.Count - $testCasesAssertions;
-	$testCasesNoAssertions = $xml.$haulNode.typedValue.value.el.assertions.Count - $testCasesExpectedOutput - $testCasesAssertions;
+	$testCasesNoAssertions = $testCases - $testCasesExpectedOutput - $testCasesAssertions;
 
 	$complexityScore = 1 + $ifs + $ands + $ors + $chooses + $forEachs + $querys + $builtIns + $ruleBangs + $decisions + $locals + $nodes;
 	
@@ -221,7 +231,7 @@ dir processModel\*.xml | % {
 	$nodes = $xml.processModelHaul.process_model_port.pm.nodes.node.Count;
 	
 	$swimLanes = $xml.processModelHaul.process_model_port.pm.lanes.lane.Count;
-	$annotations = $xml.processModelHaul.process_model_port.pm.annotations.Count;
+	$annotations = ($xml.processModelHaul.process_model_port.pm.annotations | ? {$_ -ne ""}).Count;
 	
 	$allComments = ([Regex]::Matches($code, $REcomments, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline) | % {$_ -split "`n"} | ? {$_ -notmatch $REcommentGENID});
 	$allCommentedOutCode = $allComments | ? { [Regex]::Matches($_, $REcommentedOutCode, [System.Text.RegularExpressions.RegexOptions]::IgnoreCase+[System.Text.RegularExpressions.RegexOptions]::Multiline).Count -gt 0 };
@@ -243,4 +253,132 @@ dir processModel\*.xml | % {
 	$commentedOutText = $allCommentedOutCode -join "`n";
 	$data += [PSCustomObject]@{"File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes;"COMMENTS" = $comments; "COMMENTEDOUTs" = $commentedOutCode; "LOCALs" = $locals; "LOC"=$lineCount; "TESTCASEs"=$testCases; "TESTCASESNOASSERTIONs"=$testCasesNoAssertions; "TESTCASESEXPECTEDOUTPUTs"=$testCasesExpectedOutput; "TESTCASESASSERTIONs"=$testCasesAssertions; "CYCLOMATICCOMPLEXITY" = $cyclomaticComplexity; "ARCHITECTURALCOMPLEXITY" = $architecturalComplexity; "UICOMPLEXITY" = $uiComplexity; "COMPLEXITYSCORE" = $complexityScore; "DocumentType"= $documentType; "HASDESCRIPTION" = $hasDescription; "DESCRIPTION" = $description; "JustComments" = $commentsText; "CommentedOutCode" = $commentedOutText; };
 }
-return $data;
+if($Summary) {
+	#######
+	### % of files with:
+	### * no descriptions
+	### * no comments
+	### * interfaces with no test case
+	### * rules with no test cases
+	### * rules with 1 - 2 test cases
+	### * rules with 3+ test cases
+	### * code with medium LOC (200 - 500)
+	### * code with high LOC (> 500)
+	### * code with medium complexity (50 - 200)
+	### * code with high complexity (200+)
+	#######
+	$fileCount = $data.Count;
+
+	$fpNoDesc = 0;
+	$fpNoComments = 0;
+	$ifpNoTest = 0;
+	$rpNoTest = 0;
+	$rp2Test = 0;
+	$rpEnoughTest = 0;
+	$cpMediumLOC = 0;
+	$cpHighLOC = 0;
+	$cpMediumComplexity = 0;
+	$cpHighComplexity = 0;
+	$commentToCodeRatio = 0;
+
+	if($fileCount -gt 0) {
+		
+		$interfaces = $data | ? {$_.Type -eq "Interface"};
+		$interfacesCount = $interfaces.Count;
+		$interfacesNoTests = ($interfaces | ? {$_.TESTCASEs -eq 0}).Count;
+		
+		$rules = $data | ? {$_.Type -eq "Rule"};
+		$rulesCount = $rules.Count;
+		$rulesNoTests = ($rules | ? {$_.TESTCASEs -eq 0}).Count;
+		$rules1or2Tests = ($rules | ? {$_.TESTCASEs -gt 0 -and $_.TESTCASEs -lt 3}).Count;
+		$rulesEnoughTests = ($rules | ? {$_.TESTCASEs -ge 3}).Count;
+		$rulesWithoutAssertions = ($rules | ? {$_.TESTCASESNOASSERTIONs -gt 0}).Count;
+		
+		$codeFiles = $data | ? {($_.Type -in ("Interface","Rule","ProcessModel", "Decision") -or $_.DocumentType -in ("xsl")) -and $_.LOC -gt 0};
+		$codeFilesCount = $codeFiles.Count;
+		$noComments = ($codeFiles | ? {$_.COMMENTS -eq 0}).Count;
+		$noDescription = ($codeFiles | ? {!$_.HASDESCRIPTION}).Count;
+
+		$commentCount = ($codeFiles | Measure-Object -Sum COMMENTS).Sum;
+		$locCount = ($codeFiles | Measure-Object -Sum LOC).Sum;
+		$complexitySum = ($codeFiles | Measure-Object -Sum COMPLEXITYSCORE).Sum;
+		
+		if($locCount -gt 0) {
+			$commentToCodeRatio = $commentCount / $locCount;
+		}
+
+		$codeLowLOC = ($codeFiles | ? {$_.LOC -lt 50}).Count;
+		$codeMediumLOC = ($codeFiles | ? {$_.LOC -ge 50 -and $_.LOC -lt 150}).Count;
+		$codeHighLOC = ($codeFiles | ? {$_.LOC -ge 150 -and $_.LOC -lt 300}).Count;
+		$codeHugeLOC = ($codeFiles | ? {$_.LOC -ge 300}).Count;
+
+
+		$codeLowComplexity = ($codeFiles | ? {$_.COMPLEXITYSCORE -lt 20}).Count;
+		$codeMediumComplexity = ($codeFiles | ? {$_.COMPLEXITYSCORE -ge 20 -and $_.COMPLEXITYSCORE -lt 50}).Count;
+		$codeHighComplexity = ($codeFiles | ? {$_.COMPLEXITYSCORE -ge 50 -and $_.COMPLEXITYSCORE -lt 100}).Count;
+		$codeHugeComplexity = ($codeFiles | ? {$_.COMPLEXITYSCORE -ge 100}).Count;
+		
+		$fpNoDesc = ($noDescription / $fileCount);
+		$fpNoComments = ($noComments / $codeFilesCount);
+		
+		if($interfacesCount -gt 0) {
+			$ifpNoTest = ($interfacesNoTests / $interfacesCount);
+		}
+		if($rulesCount -gt 0) {
+			$rpNoTest = ($rulesNoTests / $rulesCount);
+			$rp2Test = ($rules1or2Tests / $rulesCount);
+			$rpEnoughTest = ($rulesEnoughTests / $rulesCount);
+			$rpUselessTests = ($rulesWithoutAssertions / $rulesCount);
+		}
+		if($codeFilesCount -gt 0) {
+			$cpLowLOC = ($codeLowLOC / $codeFilesCount);
+			$cpMediumLOC = ($codeMediumLOC / $codeFilesCount);
+			$cpHighLOC = ($codeHighLOC / $codeFilesCount);
+			$cpHugeLOC = ($codeHugeLOC / $codeFilesCount);
+			$cpLowComplexity = ($codeLowComplexity / $codeFilesCount);
+			$cpMediumComplexity = ($codeMediumComplexity / $codeFilesCount);
+			$cpHighComplexity = ($codeHighComplexity / $codeFilesCount);
+			$cpHugeComplexity = ($codeHugeComplexity / $codeFilesCount);
+		}
+	}
+	
+	$totalScoreElements = 1;
+	$commentPoints = (0 - $fpNoComments - $fpNoDesc) * 0.5 * $totalScoreElements;
+	$locPoints = ($cpLowLOC + $cpMediumLOC - $cpHugeLOC) * $totalScoreElements;
+	$ccPoints = ($cpLowComplexity + $cpMediumComplexity) * $totalScoreElements;
+	$testPoints = ($rpEnoughTest) * $totalScoreElements;
+	
+	$sizePoints = if($fileCount -lt 100) {1} elseif($fileCount -lt 200) {0.5} else {0};
+	
+	$points = $commentPoints + $locPoints + $ccPoints + $testPoints + $sizePoints;
+	$fiddleFactor = [math]::max(4-[int][math]::round($points),0);
+	$grade = [char]([int][char]'A'+($fiddleFactor));
+
+	[pscustomobject]$summaryData = @{
+		"code comments: none"= $fpNoComments.tostring("P");
+		"code comments/code ratio"= $commentToCodeRatio.tostring("P");
+		"code complexity a) small"= $cpLowComplexity.tostring("P");
+		"code complexity b) medium"= $cpMediumComplexity.tostring("P");
+		"code complexity c) large"= $cpHighComplexity.tostring("P");
+		"code complexity d) extra large"= $cpHugeComplexity.tostring("P");
+		"code LOC a) small"= $cpLowLOC.tostring("P");
+		"code LOC b) medium"= $cpMediumLOC.tostring("P");
+		"code LOC c) large"= $cpHighLOC.tostring("P");
+		"code LOC d) extra large"= $cpHugeLOC.tostring("P");
+		"descriptions missing"= $fpNoDesc.tostring("P");
+		"interfaces no test"= $ifpNoTest.tostring("P");
+		"rules tests a) none"= $rpNoTest.tostring("P");
+		"rules tests b) <= 2"= $rp2Test.tostring("P");
+		"rules tests c) 3+"= $rpEnoughTest.tostring("P");
+		"rules tests d) no assertions"= $rpUselessTests.tostring("P");
+		"total a) objects"=$data.Count;
+		"total b) comments"=$commentCount;
+		"total c) LOC"=$locCount;
+		"total d) complexity"=$complexitySum;
+		"your overall grade"=$grade;
+	};
+		
+	return $summaryData.Keys | sort | % { [pscustomobject]@{"Metric"=$_;"Value"=$summaryData.$_}};
+} else {
+	return $data;
+}
