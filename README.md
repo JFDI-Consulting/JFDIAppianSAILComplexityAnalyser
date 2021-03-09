@@ -83,3 +83,8 @@ $data | select * | Out-GridView;
 ```
 
 ![Example Output](https://user-images.githubusercontent.com/20968935/109705553-d2140800-7b8f-11eb-8d18-948058ffd653.png)
+
+There is also a summary mode showing various metrics:
+```powershell
+Calculate-AppianComplexityScores.ps1 -Summary;
+```
