@@ -43,11 +43,14 @@ https://github.com/JFDI-Consulting/JFDIAppianSAILComplexityAnalyser
 .LINK
 https://jfdi.info
 
-.OUTPUTS
-Returns an array of complexity metrics for each file in your Appian project with the following properties:
-
 .PARAMETER Summary
 Specifies whether to return a summary or the full data.
+
+.PARAMETER Path
+Optional parameter to specify path to extracted source files.
+
+.OUTPUTS
+Returns an array of complexity metrics for each file in your Appian project with the following properties:
 
 File, Name, Type, IFs, ANDs, ORs, CHOOSEs, FOREACHs, QUERYs, BUILTINs, RULEBANGs, DECISIONs, NODEs, LOCALs, LOC
 
@@ -55,15 +58,23 @@ File, Name, Type, IFs, ANDs, ORs, CHOOSEs, FOREACHs, QUERYs, BUILTINs, RULEBANGs
 Calculate-AppianComplexityScores.ps1 | Export-CSV -NoTypeInformation report.csv;
 
 .EXAMPLE
-$data = Calculate-AppianComplexityScores.ps1;
+$data = Calculate-AppianComplexityScores.ps1 -Path "C:\Downloads\My App v1.0.1";
 
 .EXAMPLE
 $summary = Calculate-AppianComplexityScores.ps1 -Summary;
 
 #>
 param(
-	[switch]$Summary
+	[switch]$Summary,
+	[string]$Path
 );
+
+$popback = $false;
+if($null -ne $Path -and (Test-Path -Path $Path)) {
+	Push-Location;
+	cd $Path;
+	$popback = $true;
+}
 
 $REif = "(if\()|(<xsl:if)";
 $REand = "and\(";
@@ -256,16 +267,29 @@ dir processModel\*.xml | % {
 if($Summary) {
 	#######
 	### % of files with:
-	### * no descriptions
-	### * no comments
-	### * interfaces with no test case
-	### * rules with no test cases
-	### * rules with 1 - 2 test cases
-	### * rules with 3+ test cases
-	### * code with medium LOC (200 - 500)
-	### * code with high LOC (> 500)
-	### * code with medium complexity (50 - 200)
-	### * code with high complexity (200+)
+	### code comments: none
+	### code comments/code ratio
+	### code complexity a) small
+	### code complexity b) medium
+	### code complexity c) large
+	### code complexity d) extra large
+	### code LOC a) small
+	### code LOC b) medium
+	### code LOC c) large
+	### code LOC d) extra large
+	### descriptions missing
+	### interfaces no test
+	### rules tests a) none
+	### rules tests b) <= 2
+	### rules tests c) 3+
+	### rules tests d) no assertions
+	### ...counts for:
+	### total a) objects
+	### total b) comments
+	### total c) LOC
+	### total d) complexity
+	### ...and
+	### your overall grade (A-D)
 	#######
 	$fileCount = $data.Count;
 
@@ -378,7 +402,13 @@ if($Summary) {
 		"your overall grade"=$grade;
 	};
 		
-	return $summaryData.Keys | sort | % { [pscustomobject]@{"Metric"=$_;"Value"=$summaryData.$_}};
+	$result = $summaryData.Keys | sort | % { [pscustomobject]@{"Metric"=$_;"Value"=$summaryData.$_}};
 } else {
-	return $data;
+	$result = $data;
 }
+
+if($popback) {
+	Pop-Location;
+}
+
+return $result;
