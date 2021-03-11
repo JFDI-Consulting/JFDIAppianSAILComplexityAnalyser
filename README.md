@@ -88,3 +88,14 @@ There is also a summary mode showing various metrics:
 ```powershell
 Calculate-AppianComplexityScores.ps1 -Summary;
 ```
+
+You can also specify a path...:
+```powershell
+Calculate-AppianComplexityScores.ps1 -Path "C:\Downloads\My App v1.0.0";
+```
+
+...or paths to multiple projects:
+```powershell
+Calculate-AppianComplexityScores.ps1 -Summary -Paths "C:\Downloads\My App v1.0.0","C:\Downloads\My App v1.0.1","C:\Downloads\My App v1.0.2";
+```
+
