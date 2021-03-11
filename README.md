@@ -96,6 +96,6 @@ Calculate-AppianComplexityScores.ps1 -Path "C:\Downloads\My App v1.0.0";
 
 ...or paths to multiple projects:
 ```powershell
-Calculate-AppianComplexityScores.ps1 -Summary -Paths ".My App v1.0.0","C:\Downloads\My App v1.0.1","C:\Downloads\My App v1.0.2";
+Calculate-AppianComplexityScores.ps1 -Summary -Paths "My App v1.0.0","My App v1.0.1","My App v1.0.2";
 ```
 
