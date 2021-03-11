@@ -49,6 +49,9 @@ Specifies whether to return a summary or the full data.
 .PARAMETER Path
 Optional parameter to specify path to extracted source files.
 
+.PARAMETER Paths
+Optional parameter to specify paths multiple folders containing extracted source files. Useful for comparing versions of the same app over time.
+
 .OUTPUTS
 Returns an array of complexity metrics for each file in your Appian project with the following properties:
 
@@ -61,20 +64,60 @@ Calculate-AppianComplexityScores.ps1 | Export-CSV -NoTypeInformation report.csv;
 $data = Calculate-AppianComplexityScores.ps1 -Path "C:\Downloads\My App v1.0.1";
 
 .EXAMPLE
+$data = Calculate-AppianComplexityScores.ps1 -Paths "C:\Downloads\My App v1.0.1","C:\Downloads\My App v1.0.2","C:\Downloads\My App v1.0.3";
+
+.EXAMPLE
 $summary = Calculate-AppianComplexityScores.ps1 -Summary;
 
 #>
 param(
+    [Parameter(Mandatory=$false,ParameterSetName="NoPath")]
+    [Parameter(Mandatory=$false,ParameterSetName="Path")]
+    [Parameter(Mandatory=$false,ParameterSetName="Paths")]
 	[switch]$Summary,
-	[string]$Path
+    [Parameter(Mandatory=$true,ParameterSetName="Path")]
+	[string]$Path,
+    [Parameter(Mandatory=$true,ParameterSetName="Paths")]
+	[string[]]$Paths
 );
 
+### multiple projects to analyse?
+if($null -ne $Paths) {
+	$thisPath = (Get-Item $MyInvocation.MyCommand.Path).DirectoryName;
+	$safePaths = $Paths | ? {Test-Path $_};
+	$pathNames = $safePaths | ? {Test-Path $_} | % { (Get-Item $_).Name;};
+	if($Summary) {
+		[pscustomobject[][]]$summaries = [Object[]]::new($safePaths.Length);
+		$i = 0; $safePaths | % { $sum = & "$thisPath\Calculate-AppianComplexityScores.ps1" -Path $_ -Summary; $summaries[$i] = $sum;$i++;};
+		$results = (0..($summaries[0].Length - 1)) | % { 
+			$metricIdx = $_;
+			$item = [pscustomobject] @{
+				"Metric" = $summaries[0][$metricIdx].Metric;
+			};
+			(0..($summaries.Length - 1)) | % {
+				$sidx = $_;
+				$dirname = $pathNames[$sidx];
+				$item | Add-Member -MemberType NoteProperty -Name $dirname -Value $summaries[$sidx][$metricIdx].Value;
+			}
+			[pscustomobject]$item;
+		};
+		return $results;
+	} else {
+		$results = $safePaths | % { & "$thisPath\Calculate-AppianComplexityScores.ps1" -Path $_; };
+		return $results;
+	}
+}
+
+### save current folder and change to target folder
 $popback = $false;
-if($null -ne $Path -and (Test-Path -Path $Path)) {
+if("" -ne $Path -and (Test-Path -Path $Path)) {
 	Push-Location;
 	cd $Path;
 	$popback = $true;
 }
+
+### get folder name
+$pwdName = (Get-Item $pwd).Name;
 
 $REif = "(if\()|(<xsl:if)";
 $REand = "and\(";
@@ -183,7 +226,7 @@ dir content\*.xml | % {
 	$commentsText = $justComments -join "`n";
 	$commentedOutText = $allCommentedOutCode -join "`n";
 	
-	$data += [PSCustomObject]@{"File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes; "COMMENTs" = $comments; "COMMENTEDOUTs" = $commentedOutCode; "LOCALs" = $locals; "LOC"=$lineCount; "TESTCASEs"=$testCases; "TESTCASESNOASSERTIONs"=$testCasesNoAssertions; "TESTCASESEXPECTEDOUTPUTs"=$testCasesExpectedOutput; "TESTCASESASSERTIONs"=$testCasesAssertions; "CYCLOMATICCOMPLEXITY" = $cyclomaticComplexity; "ARCHITECTURALCOMPLEXITY" = $architecturalComplexity; "UICOMPLEXITY" = $uiComplexity; "COMPLEXITYSCORE" = $complexityScore; "DocumentType"= $documentType; "HASDESCRIPTION" = $hasDescription; "DESCRIPTION" = $description; "JustComments" = $commentsText; "CommentedOutCode" = $commentedOutText; };
+	$data += [PSCustomObject]@{"Folder" = $pwdName; "File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes; "COMMENTs" = $comments; "COMMENTEDOUTs" = $commentedOutCode; "LOCALs" = $locals; "LOC"=$lineCount; "TESTCASEs"=$testCases; "TESTCASESNOASSERTIONs"=$testCasesNoAssertions; "TESTCASESEXPECTEDOUTPUTs"=$testCasesExpectedOutput; "TESTCASESASSERTIONs"=$testCasesAssertions; "CYCLOMATICCOMPLEXITY" = $cyclomaticComplexity; "ARCHITECTURALCOMPLEXITY" = $architecturalComplexity; "UICOMPLEXITY" = $uiComplexity; "COMPLEXITYSCORE" = $complexityScore; "DocumentType"= $documentType; "HASDESCRIPTION" = $hasDescription; "DESCRIPTION" = $description; "JustComments" = $commentsText; "CommentedOutCode" = $commentedOutText; };
 
 }
 
@@ -262,7 +305,7 @@ dir processModel\*.xml | % {
 	
 	$commentsText = $justComments -join "`n";
 	$commentedOutText = $allCommentedOutCode -join "`n";
-	$data += [PSCustomObject]@{"File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes;"COMMENTS" = $comments; "COMMENTEDOUTs" = $commentedOutCode; "LOCALs" = $locals; "LOC"=$lineCount; "TESTCASEs"=$testCases; "TESTCASESNOASSERTIONs"=$testCasesNoAssertions; "TESTCASESEXPECTEDOUTPUTs"=$testCasesExpectedOutput; "TESTCASESASSERTIONs"=$testCasesAssertions; "CYCLOMATICCOMPLEXITY" = $cyclomaticComplexity; "ARCHITECTURALCOMPLEXITY" = $architecturalComplexity; "UICOMPLEXITY" = $uiComplexity; "COMPLEXITYSCORE" = $complexityScore; "DocumentType"= $documentType; "HASDESCRIPTION" = $hasDescription; "DESCRIPTION" = $description; "JustComments" = $commentsText; "CommentedOutCode" = $commentedOutText; };
+	$data += [PSCustomObject]@{"Folder" = $pwdName; "File" = $file.Name; "Name" = $name; "Type" = $type; "IFs" = $ifs; "ANDs" = $ands; "ORs" = $ors; "CHOOSEs" = $chooses; "FOREACHs" = $forEachs; "QUERYs" = $querys; "BUILTINs" = $builtIns; "RULEBANGs" = $ruleBangs; "DECISIONs" = $decisions; "NODEs" = $nodes;"COMMENTS" = $comments; "COMMENTEDOUTs" = $commentedOutCode; "LOCALs" = $locals; "LOC"=$lineCount; "TESTCASEs"=$testCases; "TESTCASESNOASSERTIONs"=$testCasesNoAssertions; "TESTCASESEXPECTEDOUTPUTs"=$testCasesExpectedOutput; "TESTCASESASSERTIONs"=$testCasesAssertions; "CYCLOMATICCOMPLEXITY" = $cyclomaticComplexity; "ARCHITECTURALCOMPLEXITY" = $architecturalComplexity; "UICOMPLEXITY" = $uiComplexity; "COMPLEXITYSCORE" = $complexityScore; "DocumentType"= $documentType; "HASDESCRIPTION" = $hasDescription; "DESCRIPTION" = $description; "JustComments" = $commentsText; "CommentedOutCode" = $commentedOutText; };
 }
 if($Summary) {
 	#######
